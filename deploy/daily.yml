@@ -1,0 +1,31 @@
+# runs discovery + drafting twice a day and appends new drafts to the ops sheet.
+# shadow vs live is controlled by the MODE repository variable (Settings > Secrets and variables > Actions).
+name: daily-run
+on:
+  schedule:
+    - cron: "17 12 * * *"   # 7:17 am central (UTC-5). odd minute on purpose
+    - cron: "43 21 * * *"   # 4:43 pm central
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: write service account file
+        run: echo '${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON_CONTENT }}' > service_account.json
+      - name: discover and draft
+        env:
+          MODE: ${{ vars.MODE }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_CSE_KEY: ${{ secrets.GOOGLE_CSE_KEY }}
+          GOOGLE_CSE_ID: ${{ secrets.GOOGLE_CSE_ID }}
+          GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: service_account.json
+          SHORTLINK_BASE: ${{ vars.SHORTLINK_BASE }}
+          REDDIT_USER_AGENT: schoolpath-community/0.1
+        run: python run.py discover-and-draft

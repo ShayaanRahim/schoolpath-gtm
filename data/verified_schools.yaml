@@ -1,0 +1,34 @@
+# schools the drafter is allowed to name, and the ONLY facts it may state about them.
+# rule: a fact goes here only with a source. ops adds rows as parents and tours confirm details.
+# keep this short and true rather than long and guessed.
+
+- name: Bezos Academy (Universal City)
+  facts:
+    - Montessori-inspired preschool, no cost for families who qualify
+    - for children who are 3 or 4 by Sept 1
+  source: head of school's post in SA Charter Moms Discussion, Apr 2026 (SA School Analytics export)
+  verify_before_use: application window dates change every year
+
+- name: Pre-K 4 SA
+  facts:
+    - city-funded full-day pre-K for 4-year-olds
+    - has partnered with JBSA on referrals for military families
+  source: https://sanantonioreport.org/child-care-shortage-joint-base-san-antonio-pre-k-4-s/
+
+- name: JBSA-Randolph Child Development Center
+  facts:
+    - on-base care for children of eligible DoD families
+    - waitlists can be long; families have reported waits over a year
+    - JBSA refers families to Military Child Care while they wait
+  source: https://sanantonioreport.org/?p=5357781
+
+- name: Founders Classical Academy (Schertz)
+  facts:
+    - classical charter school; parents in local groups mention a half-day kindergarten hybrid option
+  source: parent posts in SA Charter Moms Discussion (SA School Analytics export)
+  verify_before_use: confirm the hybrid kinder option is still offered
+
+- name: Great Hearts Live Oak
+  facts:
+    - classical charter school parents often compare with Founders Schertz for kindergarten
+  source: parent posts in SA Charter Moms Discussion (SA School Analytics export)

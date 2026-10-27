@@ -1,0 +1,4 @@
+.env
+service_account.json
+shadow/pending_prompts/
+__pycache__/

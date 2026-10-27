@@ -1,0 +1,20 @@
+section,metric,week_1,week_2,week_3,week_4,notes
+activity,posts_discovered,,,,,
+activity,posts_qualified_priority_60plus,,,,,
+activity,replies_drafted,,,,,
+activity,replies_posted_helper,,,,,
+activity,replies_posted_ambassadors,,,,,
+activity,roundups_posted,,,,,
+activity,ops_minutes,,,,,
+activity,callouts_ad_or_bot,,,,,
+results,clicks,,,,,from /r redirect log
+results,signups,,,,,from weekly signups-by-UTM export
+results,signups_per_reply,,,,,
+results,spend_usd,,,,,
+results,cost_per_signup_cumulative,,,,,
+by_channel,reddit_signups/replies,,,,,
+by_channel,facebook_signups/replies,,,,,
+by_channel,nextdoor_signups/replies,,,,,
+by_channel,roundups_signups/posts,,,,,
+by_channel,referrals_signups,,,,,
+decisions,what_we_killed_or_doubled_down,,,,,

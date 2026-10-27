@@ -1,0 +1,133 @@
+# schoolpath parent-acquisition pipeline config
+# everything an operator might want to tune lives here, not in code.
+
+campaign: nsa_early_2026_11        # becomes utm_campaign
+site_base: https://schoolpath.co
+
+# where a reply should land, by what the parent actually asked.
+# the drafter picks one key; links.py turns it into a tracked url.
+landing_pages:
+  find_school:   /en/pre-k            # zip + age search and the 3-question match quiz
+  compare:       /en/pre-k            # until per-school profile links are confirmed (see docs/offshore-dev-spec.md)
+  events:        /en/events           # open houses, tours, application season
+  tefa:          /en/tefa             # funding questions
+  how_it_works:  /en/how-it-works     # "what is this site" follow-ups
+
+# geography. tier 1 = core target, tier 2 = adjacent (still worth a reply), anything else = skip.
+geo:
+  tier1:
+    - stone oak
+    - "78258"
+    - "78259"
+    - "78260"
+    - encino park
+    - timberwood
+    - sonterra
+    - schertz
+    - cibolo
+    - garden ridge
+    - randolph
+    - jbsa
+    - universal city
+  tier2:
+    - converse
+    - live oak
+    - selma
+    - bulverde
+    - north central
+    - northeast
+    - "1604"
+    - new braunfels
+    - neisd
+    - scucisd
+    - comal isd
+    - judson
+
+# ages 0-5 signals
+age_terms:
+  - daycare
+  - day care
+  - childcare
+  - child care
+  - pre-k
+  - prek
+  - pre k
+  - preschool
+  - mother's day out
+  - mdo
+  - infant
+  - toddler
+  - kinder
+  - kindergarten
+  - montessori
+  - "pk3"
+  - "pk4"
+  - 2 year old
+  - 3 year old
+  - 4 year old
+  - 5 year old
+
+# asking-for-help signals
+intent_terms:
+  - recommend
+  - recommendation
+  - suggestions
+  - looking for
+  - any advice
+  - thoughts on
+  - experience with
+  - anyone know
+  - just moved
+  - moving to
+  - pcs
+  - waitlist
+  - "?"
+
+# posts matching these are provider ads or hiring posts, not parents
+exclude_terms:
+  - now enrolling
+  - enroll today
+  - we're hiring
+  - we are hiring
+  - spots available
+  - limited spots
+  - schedule a tour today
+  - message us for tuition
+  - "#"
+
+# discovery sources. reddit + web search run automatically; facebook and nextdoor
+# come in through the Capture tab (humans paste them) because scraping them breaks their rules.
+sources:
+  reddit:
+    subreddits: [sanantonio, JBSA, NewBraunfels, MilitarySpouse, AirForce]
+    queries:
+      - daycare
+      - preschool
+      - pre-k
+      - prek
+      - kindergarten
+      - montessori
+      - childcare
+      - mother's day out
+    max_age_days: 21
+  web_search:            # google programmable search json api (free tier). optional.
+    queries:
+      - site:forums.thebump.com daycare San Antonio
+      - site:forums.thebump.com preschool Schertz OR Cibolo OR "Stone Oak"
+      - site:reddit.com daycare Randolph
+      - site:nextdoor.com daycare "Stone Oak" OR Cibolo OR Schertz
+
+# scoring
+min_priority_to_queue: 60     # 0-100. below this, logged but not queued for a human
+
+# human-ness guardrails enforced by the queue (see docs/runbook.md for why)
+cadence:
+  max_replies_per_account_per_day: 3
+  max_replies_per_group_per_day: 2     # across all accounts, and never the same account twice in a group per day
+  min_minutes_after_post: 25           # never reply in the first minutes; instant replies look automated
+  max_hours_after_post: 72             # older threads are dead; replying looks like digging
+  link_in_every_nth_reply: 1           # set to 2 to make every other reply link-free (pure help)
+
+models:
+  score: claude-haiku-5-5
+  draft: claude-sonnet-5-5
