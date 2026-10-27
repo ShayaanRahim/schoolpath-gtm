@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pre-K Fit Quiz</title>
+<meta name="description" content="Eight questions about how your child plays and settles in, and the kinds of pre-K programs kids like yours often do well in.">
+<!--
+  prototype for schoolpath. 8 questions about observable behavior -> 1-2 program types to look at,
+  tour questions, and a tracked link into schoolpath's search.
+  - not a diagnostic or developmental screen. no health questions, nothing stored, no personal data.
+  - attribution: if the page is opened from a reply link (?utm_content=r1027-abc123), that id is carried
+    into the schoolpath link as utm_content=r1027-abc123.quiz_<type>, so the weekly utm export still
+    credits the original reply. opened cold, utm_content=quiz_<type>.
+  - live: host at schoolpath.co/fit (offshore dev, ~2 hrs; see docs/offshore-dev-spec.md).
+-->
+<style>
+  :root {
+    --bg: #fbf8f3; --card: #ffffff; --ink: #1f2a2e; --muted: #5d6b70; --line: #e6e0d6;
+    --accent: #2f6f5e; --accent-ink: #ffffff; --chip: #eef4f1; --focus: #c98b2b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151b1d; --card: #1e2629; --ink: #e9eef0; --muted: #a3b0b4; --line: #2f3a3e;
+      --accent: #6fbfa6; --accent-ink: #0f1a17; --chip: #23332e; --focus: #e0b45c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151b1d; --card: #1e2629; --ink: #e9eef0; --muted: #a3b0b4; --line: #2f3a3e;
+    --accent: #6fbfa6; --accent-ink: #0f1a17; --chip: #23332e; --focus: #e0b45c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 17px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 620px; margin: 0 auto; padding: 28px 16px 48px; }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 22px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  .progress { height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; margin-bottom: 18px; }
+  .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+  .qnum { color: var(--muted); font-size: .9rem; margin-bottom: 4px; }
+  .q { font-weight: 650; font-size: 1.15rem; margin: 0 0 14px; }
+  .opts { display: grid; gap: 10px; }
+  button.opt { text-align: left; font: inherit; color: var(--ink); background: var(--bg);
+               border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; cursor: pointer; }
+  button.opt:hover { border-color: var(--accent); }
+  button:focus-visible, a:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .nav { display: flex; justify-content: space-between; margin-top: 16px; }
+  .link { background: none; border: 0; color: var(--muted); font: inherit; cursor: pointer; padding: 6px 0; }
+  .type { background: var(--chip); border-radius: 12px; padding: 16px; margin: 12px 0; }
+  .type h3 { margin: 0 0 4px; font-size: 1.1rem; }
+  .why { color: var(--muted); margin: 6px 0 10px; }
+  ul { margin: 6px 0 0; padding-left: 20px; }
+  .note { background: var(--chip); border-radius: 10px; padding: 12px 14px; margin-top: 12px; }
+  a.cta { display: block; text-align: center; background: var(--accent); color: var(--accent-ink);
+          text-decoration: none; font-weight: 650; border-radius: 10px; padding: 14px; margin-top: 18px; }
+  .fine { color: var(--muted); font-size: .85rem; margin-top: 18px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>What kind of pre-K fits your kid?</h1>
+  <p class="sub">8 quick questions about how your child plays, settles in, and handles their day. About 2 minutes.</p>
+  <div class="card" id="app" aria-live="polite"></div>
+  <p class="fine">This is a starting point for touring, not an assessment of your child. Every kid is different, and a good program adapts. Made by SchoolPath, a free school and daycare finder for San Antonio families. Nothing you choose here is saved or sent anywhere.</p>
+</main>
+
+<script>
+// each answer nudges program types: play, montessori, academic, nature.
+// "ease" collects signs that a gentler start (half-day / shorter week) may help.
+const QUESTIONS = [
+  { q: "When you walk into a new place, like a birthday party, your child usually...",
+    a: [["Jumps right in and starts exploring", {play:1, nature:1}],
+        ["Watches for a bit, then joins", {montessori:1}],
+        ["Stays close to you for a good while", {montessori:1, ease:1}]] },
+  { q: "On a typical afternoon, your child's energy is...",
+    a: [["Nonstop: climbing, running, everything at full speed", {nature:2, play:1}],
+        ["Busy, but they can settle into something quiet", {play:1, montessori:1}],
+        ["Happiest with calm, focused play", {montessori:1, academic:1}]] },
+  { q: "Give them a puzzle or building set that's a little too hard. They...",
+    a: [["Stick with it and want to do it themselves", {montessori:2}],
+        ["Work at it, then ask you to help", {academic:1, play:1}],
+        ["Move on to something else pretty quickly", {play:1, nature:1}]] },
+  { q: "How does your child do with routines, like meals and bedtime?",
+    a: [["Loves knowing what comes next, and changes can upset them", {academic:1, montessori:1}],
+        ["Goes with the flow", {play:1}],
+        ["Pushes back, but goes along if it's fun", {play:1, nature:1}]] },
+  { q: "Their favorite way to play is...",
+    a: [["Pretend play and games with other kids", {play:2}],
+        ["Sorting, building, or doing real tasks like pouring and stirring", {montessori:2}],
+        ["Outside: digging, bugs, running around", {nature:2}],
+        ["Letters, numbers, playing school", {academic:2}]] },
+  { q: "When things don't go their way, your child usually...",
+    a: [["Bounces back quickly", {}],
+        ["Needs a few minutes and a hug", {}],
+        ["Has a big reaction that takes a while to settle", {ease:1, montessori:1}]] },
+  { q: "How much time has your child spent away from you so far?",
+    a: [["Already in daycare or preschool, and doing fine", {}],
+        ["Some, with grandparents or a sitter", {}],
+        ["Almost none yet", {ease:1}]] },
+  { q: "For this year, what matters most to you?",
+    a: [["Getting ready for kindergarten academics", {academic:2}],
+        ["Confidence and making friends", {play:2}],
+        ["Independence and focus", {montessori:2}],
+        ["Lots of time outdoors", {nature:2}]] },
+];
+
+const TYPES = {
+  play: { name: "Play-based", approach: "play-based",
+    blurb: "Kids learn through pretend play, centers, and lots of time with other kids. Early reading and math show up inside games instead of worksheets.",
+    tour: ["How much of the day is free-choice play?",
+           "How do teachers build letters and numbers into play?",
+           "How do you help kids work out conflicts with each other?"] },
+  montessori: { name: "Montessori or Montessori-inspired", approach: "Montessori",
+    blurb: "Calm rooms, hands-on materials, and kids choosing their own work for long stretches. Good fit for kids who like doing things themselves.",
+    tour: ["Are the lead teachers Montessori-trained, or is it Montessori-inspired?",
+           "How long is the uninterrupted work period each morning?",
+           "Are classes mixed-age, and how does that work day to day?"] },
+  academic: { name: "Structured or academic pre-K", approach: "structured / academic",
+    blurb: "A predictable schedule with teacher-led lessons in letters, numbers, and early writing. Good fit for kids who like knowing what comes next.",
+    tour: ["Can I see a typical day's schedule?",
+           "How much time is whole-group versus small-group or play?",
+           "How do you keep it fun for 4-year-olds who aren't ready yet?"] },
+  nature: { name: "Nature-based or outdoor-heavy", approach: "nature-based / outdoor",
+    blurb: "A lot of the day happens outside: gardens, mud, climbing, bugs. Good fit for high-energy kids who learn by moving.",
+    tour: ["How many hours a day are kids outside, and what happens in Texas heat?",
+           "What does outdoor time look like on rainy days?",
+           "How do you balance outdoor time with early literacy?"] },
+};
+
+// which answer explains each type, for the "why" line
+const WHY = {
+  play: "they light up with other kids and pretend play",
+  montessori: "they like doing things themselves and settling into focused work",
+  academic: "they like predictable routines and early letters and numbers",
+  nature: "they have big energy and love being outside",
+};
+
+const params = new URLSearchParams(location.search);
+const incoming = params.get("utm_content");          // the reply id when opened from a reply link
+const source = params.get("utm_source") || "quiz";
+let answers = [];
+const app = document.getElementById("app");
+
+function render(i) {
+  if (i >= QUESTIONS.length) return results();
+  const item = QUESTIONS[i];
+  app.innerHTML = `
+    <div class="progress" aria-hidden="true"><div style="width:${(i / QUESTIONS.length) * 100}%"></div></div>
+    <div class="qnum">Question ${i + 1} of ${QUESTIONS.length}</div>
+    <p class="q">${item.q}</p>
+    <div class="opts">${item.a.map((a, k) => `<button class="opt" data-k="${k}">${a[0]}</button>`).join("")}</div>
+    <div class="nav">${i > 0 ? '<button class="link" id="back">&larr; Back</button>' : "<span></span>"}<span></span></div>`;
+  app.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => {
+    answers[i] = Number(b.dataset.k);
+    render(i + 1);
+  }));
+  const back = document.getElementById("back");
+  if (back) back.addEventListener("click", () => render(i - 1));
+  const first = app.querySelector(".opt");
+  if (first && i > 0) first.focus({ preventScroll: true });   // keyboard users keep their place
+}
+
+function score() {
+  const s = { play: 0, montessori: 0, academic: 0, nature: 0, ease: 0 };
+  answers.forEach((k, i) => {
+    const w = QUESTIONS[i].a[k][1];
+    for (const key in w) s[key] += w[key];
+  });
+  return s;
+}
+
+function link(type) {
+  const content = (incoming ? incoming + "." : "") + "quiz_" + type;
+  const q = new URLSearchParams({ utm_source: source, utm_medium: "community",
+                                  utm_campaign: "nsa_fit_quiz", utm_content: content });
+  return "https://schoolpath.co/en/pre-k?" + q.toString();
+}
+
+function results() {
+  const s = score();
+  const ranked = ["play", "montessori", "academic", "nature"].sort((a, b) => s[b] - s[a]);
+  const top = ranked[0];
+  // show a second type only if it's close to the first
+  const show = s[ranked[1]] >= s[top] - 1 ? [top, ranked[1]] : [top];
+  const gentle = s.ease >= 2;
+  app.innerHTML = `
+    <div class="progress" aria-hidden="true"><div style="width:100%"></div></div>
+    <p class="q">Kids like yours often do well in:</p>
+    ${show.map(t => `
+      <div class="type">
+        <h3>${TYPES[t].name}</h3>
+        <p class="why">From your answers, ${WHY[t]}.</p>
+        <div>${TYPES[t].blurb}</div>
+        <div style="margin-top:10px;font-weight:600">Ask on the tour:</div>
+        <ul>${TYPES[t].tour.map(x => `<li>${x}</li>`).join("")}</ul>
+      </div>`).join("")}
+    ${gentle ? `<div class="note"><strong>Easing in:</strong> a few of your answers suggest a gentler start could help. Look at half-day or 3-day-a-week programs first, and ask how they handle the first two weeks.</div>` : ""}
+    <a class="cta" href="${link(top)}">See pre-K openings near you on SchoolPath</a>
+    <p class="fine">On SchoolPath's 3-question match, pick <strong>${TYPES[top].approach}</strong> for approach${gentle ? " and half day for schedule" : ""} to see schools ranked for you.</p>
+    <div class="nav"><button class="link" id="again">Start over</button><span></span></div>`;
+  document.getElementById("again").addEventListener("click", () => { answers = []; render(0); });
+}
+
+render(0);
+</script>
+</body>
+</html>

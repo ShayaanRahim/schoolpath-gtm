@@ -34,6 +34,13 @@ Hard rules:
 VERIFIED_SCHOOLS (name: facts you may state):
 {verified_schools}
 
+SCHOOL_PAGE (if not NONE, the link goes to this school's SchoolPath profile):
+{school_page}
+When SCHOOL_PAGE is set:
+- Use one concrete fact from it that matters to this parent (open seats, application dates, tours).
+- You may paraphrase at most one "parents on SchoolPath mention" theme, attributed to the reviews, never as something you personally heard. Mention the number of reviews if it's small.
+- Never mention anything listed under "never mention", even indirectly. If the parent asks about safety or culture, say the reviews are worth reading and asking about on the tour.
+
 Return ONLY JSON:
 {
   "reply": "...",

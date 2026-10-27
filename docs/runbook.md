@@ -17,7 +17,7 @@ Part A takes a teammate from this repo to live in under 60 minutes. Part B is wh
 | 5 | Google Cloud service account + JSON key, shared as Editor on the sheet | console.cloud.google.com → IAM → Service accounts | $0 | Pipeline writes to the sheet |
 | 6 | Google Programmable Search key + engine ID (optional) | programmablesearchengine.google.com | $0 on the free daily quota | The Bump / indexed Nextdoor |
 | 7 | Google Form "Saw a parent asking?" writing to the `Capture` tab | forms.google.com | $0 | Ambassadors paste closed-group posts |
-| 8 | Reddit helper account, disclosed (e.g. `u/Maria_at_SchoolPath`) | reddit.com | $0 | Reddit replies |
+| 8 | Reddit helper account, disclosed (e.g. `u/Maria_at_SchoolPath`) + a "script" app on it (`REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`) | reddit.com/prefs/apps | $0 | Reddit replies + discovery (Reddit blocks unauthenticated search, so discovery needs the app keys) |
 | 9 | `/r/<code>` redirect route on schoolpath.co | offshore dev, see `offshore-dev-spec.md` | $0 cash, about 2 dev hours | Clean links. Until it ships, leave `SHORTLINK_BASE` blank and full UTM links are used. |
 
 There are no proxies, no phone numbers, and no extra Facebook or Nextdoor accounts. That's deliberate.

@@ -27,7 +27,10 @@ def build(reply_id, landing_key, source, post_type):
     input: reply id, landing page key from config, post source, post type.
     returns (link_to_post, full_utm_url). reply style is joined later through reply_id.
     """
-    path = CONFIG["landing_pages"].get(landing_key, CONFIG["landing_pages"]["find_school"])
+    if landing_key.startswith("/"):          # a specific school's profile page
+        path = landing_key
+    else:
+        path = CONFIG["landing_pages"].get(landing_key, CONFIG["landing_pages"]["find_school"])
     params = {
         "utm_source": channel_of(source),
         "utm_medium": "community",

@@ -23,6 +23,8 @@ This finds parents in North San Antonio who are asking for daycare, pre-K, or ki
                      prompts/draft.md  LLM drafts: answer first, verified facts only,
                                        one tracked link, disclosure line, 40–110 words
                                                      ▼
+                     school mentioned? if it has a SchoolPath page, link THAT profile + use its facts
+                                       (no page → logged as a catalog gap for the product team)
                      sp/links.py       schoolpath.co/r/<code> → full UTM url (utm_content = reply id)
                      sp/accounts.py    who posts it, and when (daily caps, never instant, jitter)
                                                      ▼
@@ -53,6 +55,15 @@ This finds parents in North San Antonio who are asking for daycare, pre-K, or ki
 
 **Where the link goes.** `best_landing` picks the page that answers the question: the zip/age search and quiz for "find me a pre-K", events for deadline and open-house questions, the TEFA page for funding questions. Never the signup page.
 
+**Beyond replying to "any recommendations?"** The data shows four times more early-ed questions that name a specific school (101) than questions that name a place in our geography (about 23). So the system also triggers on school mentions:
+- **School mentioned, and it has a SchoolPath page:** the reply links to that school's profile. It uses page facts (open seats, application window, book-a-tour) and at most one operational review theme, credited to the reviews.
+- **Allegations in reviews are never repeated.** SST Sonterra's AI summary leads with discrimination and violence concerns from 4 reviews. Repeating that about a named school from a SchoolPath-connected account is a legal and partner risk, and exactly the screenshot to avoid. Parents read the reviews themselves on the page.
+- **School mentioned, no page:** logged as a catalog gap. `python run.py catalog-gaps` ranks those schools by parent mentions: Great Hearts Live Oak 111, Founders Schertz 86, Pre-K 4 SA 58, none with a SchoolPath page.
+
+Two proactive assets run with admin permission, for weeks when nobody is asking:
+- **A deadlines and open-houses roundup.** November is application season.
+- **A pre-K fit quiz (`quiz/index.html`).** Eight questions about observable behavior (energy, independence, how they handle new places and routines) map to the program types worth touring, with tour questions and a tracked link into SchoolPath's search. It's framed as fit, not assessment. It asks no health or developmental questions and stores nothing.
+
 **Tracking.** Every reply gets its own id, sent as `utm_content`, with the post type in `utm_term`. SchoolPath's weekly signups-by-UTM export joins back to the queue, so `python run.py report` shows results by channel, post type, reply style, and account, with kill and double-down hints that match `docs/experiment-plan.md`.
 
 ## Run it
@@ -74,7 +85,8 @@ With no `ANTHROPIC_API_KEY`, the pipeline uses the **file backend**: it writes e
 |---|---|
 | `config.yaml` | Everything tunable: geography, keywords, sources, landing pages, cadence caps, models |
 | `prompts/` | `score.md`, `draft.md`, `followup.md`, plain text, edit freely |
-| `data/verified_schools.yaml` | The only school facts a draft may state, each with a source |
+| `data/verified_schools.yaml` | The only school facts a draft may state, each with a source, plus SchoolPath profile URLs, safe review themes, and a never-repeat list |
+| `quiz/index.html` | Pre-K fit quiz prototype (static, one file). Carries the reply id through to SchoolPath for attribution |
 | `sp/` | Pipeline code (discover, prefilter, llm, links, accounts, pipeline, report) |
 | `sheet/` | Ops-sheet tab templates: accounts, capture, queue |
 | `shadow/shadow_log.csv` | Shadow-mode run: every post detected, its scores, the draft, and the link |
@@ -93,6 +105,9 @@ With no `ANTHROPIC_API_KEY`, the pipeline uses the **file backend**: it writes e
 | Qualify + draft | LLM, prompts as files | Cheap model for scoring, stronger model only for drafts. The keyword gate cuts LLM calls by about 90%. |
 | Ops interface | Google Sheet | The offshore team already knows it, it's free, and it has filters and status dropdowns. A web app would be slower to change. |
 | Posting | Never automated | Redreach deliberately doesn't auto-post because it gets accounts banned. Same call here. |
+| Considered and rejected | Autism or developmental "screening" quizzes for groups | A company-run medical screen for anxious parents risks false alarms and false reassurance, and validated tools are licensed for clinical follow-up. Special-needs parents (7 of 23 shadow drafts) get a practical guide instead: the ECI transition at 3, how to request a free district evaluation, what to ask about on-site therapy. |
+| Considered and rejected | "I heard {negative trait}" replies | They present an AI summary as hearsay and repeat unverified allegations about named schools. Replaced by attributed, operational review themes plus a link to the full reviews. |
+| Discovery fallback | Reddit OAuth → public JSON → RSS → human capture | Reddit now blocks unauthenticated search (403 from a home network during the shadow run) and steers new developers to Devvit, which only runs inside subreddits you moderate. When the API isn't available, the ops person does a 5-minute daily search through the Capture form. |
 | Short links | `schoolpath.co/r/<code>` route (2 hrs of dev) | A first-party domain looks like a normal link. Bitly-style shorteners look like ads. |
 | Scheduler | GitHub Actions cron | Free, no server. |
 

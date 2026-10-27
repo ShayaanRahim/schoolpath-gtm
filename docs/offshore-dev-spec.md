@@ -12,6 +12,8 @@
 6. Make sure the UTM values survive into signup attribution (stored on the session or first-touch cookie), even when the parent browses a few pages before signing up.
 7. Weekly: export clicks per `code` as CSV. `python run.py report --clicks clicks.csv` reads it.
 
+**Also (about 2 hours): host the fit quiz.** Serve `quiz/index.html` as-is at `schoolpath.co/fit`. It's a single static file with no backend and stores nothing. It reads `utm_source` and `utm_content` from its own URL and passes them into its link to `/en/pre-k`, so a signup that came reply → quiz → SchoolPath is still credited to the original reply.
+
 **Optional (only if there's time left, since it lifts conversion on every reply):**
 - Shareable filter URLs on the school search: `/en/marketplace/schools?zip=78108&age=pk3&schedule=half_day`. Today filters don't appear in the URL, so a reply can't link to "half-day pre-K near Cibolo," only to the general search.
 - `og:title` / `og:description` on school profile pages, so link previews in Facebook show the school name instead of a generic card.

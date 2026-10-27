@@ -1,8 +1,33 @@
 # schools the drafter is allowed to name, and the ONLY facts it may state about them.
 # rule: a fact goes here only with a source. ops adds rows as parents and tours confirm details.
-# keep this short and true rather than long and guessed.
+#
+# schoolpath_url: the school's SchoolPath profile (non-guessable uuid urls, so they're listed here).
+#   when a post names a school that has one, the reply links to THAT page, not the generic search.
+#   null = SchoolPath has no page for it yet. mentions of these are counted as catalog gaps.
+# safe_review_themes: review themes the reply may paraphrase ("parents on SchoolPath mention ...").
+#   only operational themes (homework, communication, car line, class size, admissions).
+#   allegations (discrimination, violence, abuse, safety incidents) are NEVER repeated in a reply,
+#   even when they appear in the AI summary: 4 reviews is not a fact, and a SchoolPath-linked account
+#   repeating them about a named school is the screenshot we can't afford.
+
+- name: SST Sonterra
+  aliases: ["sst sonterra", "sonterra"]
+  schoolpath_url: /en/marketplace/schools/8bd08ee6-bfaa-49b0-a2ee-72f88945cff9
+  facts:
+    - tuition-free public charter, PK3 through 6th grade, STEM and project-based learning
+    - SchoolPath shows open PK3 and PK4 seats (updated Aug 2026, confirm before posting)
+    - applications for next year open Nov 1, 2026, deadline Jan 1, 2027
+    - you can book a tour or request info from its SchoolPath page
+  safe_review_themes:
+    - parents praise the academics and say staff treat kids with respect
+    - parents say administration is responsive
+  review_count: 4
+  never_repeat: ["discrimination", "violence", "safety incidents", "bullying incidents"]
+  source: SchoolPath profile, viewed Oct 27, 2026
 
 - name: Bezos Academy (Universal City)
+  aliases: ["bezos"]
+  schoolpath_url: null
   facts:
     - Montessori-inspired preschool, no cost for families who qualify
     - for children who are 3 or 4 by Sept 1
@@ -10,12 +35,16 @@
   verify_before_use: application window dates change every year
 
 - name: Pre-K 4 SA
+  aliases: ["pre-k 4 sa", "prek4sa", "pre-k4sa", "prek 4 sa"]
+  schoolpath_url: null
   facts:
     - city-funded full-day pre-K for 4-year-olds
     - has partnered with JBSA on referrals for military families
   source: https://sanantonioreport.org/child-care-shortage-joint-base-san-antonio-pre-k-4-s/
 
 - name: JBSA-Randolph Child Development Center
+  aliases: ["randolph cdc", "cdc"]
+  schoolpath_url: null
   facts:
     - on-base care for children of eligible DoD families
     - waitlists can be long; families have reported waits over a year
@@ -23,12 +52,22 @@
   source: https://sanantonioreport.org/?p=5357781
 
 - name: Founders Classical Academy (Schertz)
+  aliases: ["founders"]
+  schoolpath_url: null
   facts:
     - classical charter school; parents in local groups mention a half-day kindergarten hybrid option
   source: parent posts in SA Charter Moms Discussion (SA School Analytics export)
   verify_before_use: confirm the hybrid kinder option is still offered
 
 - name: Great Hearts Live Oak
+  aliases: ["great hearts live oak", "gh live oak", "ghlo"]
+  schoolpath_url: null
   facts:
     - classical charter school parents often compare with Founders Schertz for kindergarten
   source: parent posts in SA Charter Moms Discussion (SA School Analytics export)
+
+- name: BASIS North Central
+  aliases: ["basis north central", "basis nc"]
+  schoolpath_url: null
+  facts: []
+  source: no SchoolPath page as of Oct 27, 2026

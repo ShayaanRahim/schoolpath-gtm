@@ -18,39 +18,108 @@ from .common import CONFIG, ROOT, read_csv, short_hash
 UA = os.environ.get("REDDIT_USER_AGENT", "schoolpath-shadow/0.1 (contact: ops)")
 
 
+def _reddit_token():
+    """
+    oauth for reddit's official api (a free "script" app at reddit.com/prefs/apps).
+    reddit now blocks most unauthenticated json requests, so this is the reliable path.
+    returns a bearer token, or None if credentials aren't configured.
+    """
+    cid, secret = os.environ.get("REDDIT_CLIENT_ID"), os.environ.get("REDDIT_CLIENT_SECRET")
+    if not (cid and secret):
+        return None
+    data = {"grant_type": "client_credentials"}
+    if os.environ.get("REDDIT_USERNAME"):
+        data = {"grant_type": "password", "username": os.environ["REDDIT_USERNAME"],
+                "password": os.environ.get("REDDIT_PASSWORD", "")}
+    r = requests.post("https://www.reddit.com/api/v1/access_token", auth=(cid, secret), data=data,
+                      headers={"User-Agent": UA}, timeout=15)
+    r.raise_for_status()
+    return r.json().get("access_token")
+
+
+def _reddit_json(sub, q, token):
+    base = "https://oauth.reddit.com" if token else "https://www.reddit.com"
+    headers = {"User-Agent": UA, **({"Authorization": f"bearer {token}"} if token else {})}
+    r = requests.get(f"{base}/r/{sub}/search" + ("" if token else ".json"),
+                     params={"q": q, "restrict_sr": 1, "sort": "new", "limit": 25, "t": "month"},
+                     headers=headers, timeout=15)
+    r.raise_for_status()
+    out = []
+    for child in r.json().get("data", {}).get("children", []):
+        d = child["data"]
+        out.append((d["id"], d["created_utc"], "https://www.reddit.com" + d["permalink"],
+                    d.get("author", ""), (d.get("title", "") + "\n" + d.get("selftext", "")).strip()))
+    return out
+
+
+def _reddit_rss(sub, q):
+    # fallback: reddit's search rss feed, which is often still open when the json endpoint is blocked
+    import html
+    import re
+    import xml.etree.ElementTree as ET
+    r = requests.get(f"https://www.reddit.com/r/{sub}/search.rss",
+                     params={"q": q, "restrict_sr": "on", "sort": "new", "t": "month"},
+                     headers={"User-Agent": UA}, timeout=15)
+    r.raise_for_status()
+    ns = {"a": "http://www.w3.org/2005/Atom"}
+    out = []
+    for e in ET.fromstring(r.content).findall("a:entry", ns):
+        rid = (e.findtext("a:id", "", ns) or "").replace("t3_", "")
+        ts = e.findtext("a:updated", "", ns) or e.findtext("a:published", "", ns)
+        created = datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp() if ts else time.time()
+        link = e.find("a:link", ns).get("href") if e.find("a:link", ns) is not None else ""
+        body = re.sub(r"<[^>]+>", " ", html.unescape(e.findtext("a:content", "", ns) or ""))
+        body = re.sub(r"submitted by .*$", "", re.sub(r"\s+", " ", body)).strip()
+        author = (e.findtext("a:author/a:name", "", ns) or "").replace("/u/", "")
+        out.append((rid, created, link, author, (e.findtext("a:title", "", ns) + "\n" + body).strip()))
+    return out
+
+
 def from_reddit():
     """
-    searches each configured subreddit for each query using reddit's public json.
+    searches each configured subreddit for each query.
+    tries, in order: official oauth api (if keys are set), public json, public rss.
     input: none (reads config). returns a list of posts newer than max_age_days.
     """
     cfg = CONFIG["sources"]["reddit"]
     cutoff = time.time() - cfg["max_age_days"] * 86400
     out, seen = [], set()
+    try:
+        token = _reddit_token()
+    except requests.RequestException as e:
+        print(f"  reddit oauth failed ({e}), falling back to public endpoints")
+        token = None
+    mode = "oauth" if token else "json"
     for sub in cfg["subreddits"]:
         for q in cfg["queries"]:
-            url = f"https://www.reddit.com/r/{sub}/search.json"
-            params = {"q": q, "restrict_sr": 1, "sort": "new", "limit": 25, "t": "month"}
             try:
-                r = requests.get(url, params=params, headers={"User-Agent": UA}, timeout=15)
-                r.raise_for_status()
+                items = _reddit_json(sub, q, token) if mode != "rss" else _reddit_rss(sub, q)
             except requests.RequestException as e:
+                if mode == "json":
+                    print("  reddit json blocked, switching to rss for the rest of the run")
+                    mode = "rss"
+                    try:
+                        items = _reddit_rss(sub, q)
+                    except Exception as e2:
+                        print(f"  reddit r/{sub} '{q}': {e2}")
+                        continue
+                else:
+                    print(f"  reddit r/{sub} '{q}': {e}")
+                    continue
+            except Exception as e:
                 print(f"  reddit r/{sub} '{q}': {e}")
                 continue
-            for child in r.json().get("data", {}).get("children", []):
-                d = child["data"]
-                if d["id"] in seen or d["created_utc"] < cutoff:
+            for rid, created, link, author, text in items:
+                if rid in seen or created < cutoff:
                     continue
-                seen.add(d["id"])
+                seen.add(rid)
                 out.append({
-                    "post_id": f"rd_{d['id']}",
-                    "source": "reddit",
-                    "group": f"r/{sub}",
-                    "url": "https://www.reddit.com" + d["permalink"],
-                    "author": d.get("author", ""),
-                    "posted_at": datetime.fromtimestamp(d["created_utc"], timezone.utc).isoformat(),
-                    "text": (d.get("title", "") + "\n" + d.get("selftext", "")).strip(),
+                    "post_id": f"rd_{rid}", "source": "reddit", "group": f"r/{sub}", "url": link,
+                    "author": author, "text": text,
+                    "posted_at": datetime.fromtimestamp(created, timezone.utc).isoformat(),
                 })
-            time.sleep(1.2)  # stay well under reddit's unauthenticated rate limit
+            time.sleep(1.2 if token else 2.5)  # stay well under reddit's rate limits
+    print(f"  reddit: {len(out)} posts via {mode}")
     return out
 
 

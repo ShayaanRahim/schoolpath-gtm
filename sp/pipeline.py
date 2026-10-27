@@ -21,7 +21,7 @@ QUEUE_CSV = ROOT / "sheet" / "queue.csv"
 FIELDS = ["reply_id", "status", "priority", "intent_score", "prefilter_score", "source", "channel", "group",
           "posted_at", "url", "post_text", "summary", "geo_tier", "age_band", "post_type", "needs",
           "risk_flags", "persona", "account", "post_after", "reply_style", "draft_reply", "link",
-          "full_utm_url", "reviewer_note", "skip_reason", "prefilter_reasons"]
+          "full_utm_url", "schools_linked", "catalog_gaps", "reviewer_note", "skip_reason", "prefilter_reasons"]
 
 
 def priority(s):
@@ -57,9 +57,33 @@ def persona_for(channel):
     return "HELPER", "a named SchoolPath team member who says so plainly"
 
 
+def load_schools():
+    return yaml.safe_load((ROOT / "data" / "verified_schools.yaml").read_text())
+
+
 def verified_schools_text():
-    rows = yaml.safe_load((ROOT / "data" / "verified_schools.yaml").read_text())
-    return "\n".join(f"- {r['name']}: " + "; ".join(r["facts"]) for r in rows)
+    return "\n".join(f"- {r['name']}: " + "; ".join(r["facts"]) for r in load_schools() if r.get("facts"))
+
+
+def schools_mentioned(text):
+    """
+    finds known schools named in a post.
+    input: post text. returns (schools_with_a_schoolpath_page, schools_without_one) as lists of dicts.
+    """
+    t = text.lower()
+    hits = [s for s in load_schools() if any(a in t for a in s.get("aliases", []))]
+    return [s for s in hits if s.get("schoolpath_url")], [s for s in hits if not s.get("schoolpath_url")]
+
+
+def school_page_context(school):
+    # what the drafter may say about the school whose page we link to. allegations never get here.
+    if not school:
+        return "NONE"
+    lines = [f"School: {school['name']} (reply links to its SchoolPath page, {school.get('review_count', 0)} parent reviews)"]
+    lines += [f"- fact: {f}" for f in school.get("facts", [])]
+    lines += [f"- parents on SchoolPath mention: {t}" for t in school.get("safe_review_themes", [])]
+    lines.append("- never mention: " + ", ".join(school.get("never_repeat", [])))
+    return "\n".join(lines)
 
 
 def run(sa_export=None, limit=None, input_csv=None, min_prefilter=0):
@@ -91,12 +115,20 @@ def run(sa_export=None, limit=None, input_csv=None, min_prefilter=0):
             "needs": ", ".join(s.get("needs", [])), "risk_flags": ", ".join(s.get("risk_flags", [])),
             "skip_reason": s.get("skip_reason", ""),
         }
+        in_catalog, gaps = schools_mentioned(p["text"])
+        row["schools_linked"] = in_catalog[0]["name"] if in_catalog else ""
+        row["catalog_gaps"] = ", ".join(g["name"] for g in gaps)
         if is_live() and _hours_old(p["posted_at"]) > CONFIG["cadence"]["max_hours_after_post"]:
             row["skip_reason"] = row["skip_reason"] or "thread too old to reply naturally"
             pr = row["priority"] = 0
         if pr >= CONFIG["min_priority_to_queue"]:
             persona, notes = persona_for(channel)
             landing = s.get("best_landing") or "find_school"
+            school = in_catalog[0] if in_catalog else None
+            # only when the parent is asking about that school; a passing mention in a broad search
+            # still lands on the search page
+            if school and s.get("post_type") in ("comparison", "experience_question"):
+                landing = school["schoolpath_url"]   # the page that answers "what's X like?"
             link, full = links.build(reply_id, landing, p["source"], s.get("post_type", "other"))
             drafted += 1
             if landing == "none" or drafted % CONFIG["cadence"]["link_in_every_nth_reply"] != 0:
@@ -105,7 +137,8 @@ def run(sa_export=None, limit=None, input_csv=None, min_prefilter=0):
                              summary=s.get("one_line_summary", ""), needs=", ".join(s.get("needs", [])),
                              post_type=s.get("post_type"), link=link if landing != "none" else "NONE",
                              verified_schools=vschools,
-                             recent_phrases=recent_disclosures()), CONFIG["models"]["draft"])
+                             recent_phrases=recent_disclosures(),
+                             school_page=school_page_context(school)), CONFIG["models"]["draft"])
             if d is None:
                 waiting += 1
                 continue
